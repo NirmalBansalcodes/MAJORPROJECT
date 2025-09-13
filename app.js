@@ -3,6 +3,7 @@ const app = express();
 const mongoose = require("mongoose");
 const Listing = require("./models/listing.js");
 const path = require("path");
+const methodOverride = require("method-override");
 
 main()
     .then(() => {
@@ -18,6 +19,7 @@ async function main() {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(methodOverride("_method"));
 app.set("view engine","ejs");
 app.set("views",path.join(__dirname, "views"));
 
@@ -59,8 +61,25 @@ app.post("/listings",async (req,res) => {
 app.get("/listings/:id/edit",async (req,res) => {
     let {id} =req.params;
     const listing = await Listing.findById(id);
-    res.render("lisitngs/edit.ejs",{listing});
-})
+    res.render("listings/edit.ejs",{listing});
+});
+
+//UPDATE ROUTE
+
+app.put("/listings/:id",async (req,res) => {
+    let {id} = req.params;
+    await Listing.findByIdAndUpdate(id, { ...req.body.listing });
+    res.redirect("/listings");
+});
+
+//DELETE ROUTE
+
+app.delete("/listings/:id", async (req,res) => {
+    let {id} = req.params;
+    let deletedListing = await Listing.findByIdAndDelete(id);
+    console.log(deletedListing);
+    res.redirect("/listings");
+});
 
 // app.get("/testListing", async (req,res) =>{
 //     let sampleListing = new Listing({
