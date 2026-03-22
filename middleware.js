@@ -40,14 +40,16 @@ module.exports.validateListing = (req,res,next) => {
 };
 
 module.exports.validateReview = (req,res,next) => {
-    let {error} = reviewSchema.validate(req.body);
-       
-       if(error){
-        let errMsg = error.details.map((el)=> el.message).join(",");
-        throw new ExpressError(400, error);
-       }else{
+    let { error } = reviewSchema.validate(req.body);
+
+    if (error) {
+        let errMsg = error.details.map(el => el.message).join(",");
+        req.flash("error", errMsg);
+
+        return res.redirect(`/listings/${req.params.id}`); 
+    } else {
         next();
-       }
+    }
 };
 
 module.exports.isReviewAuthor = async (req, res, next) => {

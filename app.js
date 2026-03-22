@@ -1,3 +1,7 @@
+if(process.env.NODE_ENV != "production"){
+    require('dotenv').config();
+}
+
 const express = require("express");
 const app = express();
 const mongoose = require("mongoose");
@@ -12,7 +16,7 @@ const LocalStrategy = require("passport-local");
 const User = require("./models/user.js");
 
 const listingRouter = require("./routes/listing.js");
-const reviewRouter = require("./routes/review.js");
+// const reviewRouter = require("./routes/review.js");
 const userRouter = require("./routes/user.js");
 
 
@@ -79,7 +83,7 @@ app.use((req, res, next) => {
 // })
 
 app.use("/listings", listingRouter);
-app.use("/listings/:id/reviews", reviewRouter);
+// app.use("/listings/:id/reviews", reviewRouter);
 app.use("/", userRouter);
 
 
@@ -87,10 +91,16 @@ app.use((req,res,next) => {
     next(new ExpressError(404, "Page not found!"));
 });
 
-app.use((err, req, res, next) =>{
-    let {statusCode=500 , message="something went wrong!"} = err;
-    res.status(statusCode).render("error.ejs",{message});
-    // res.status(statusCode).send(message);
+app.use((err, req, res, next) => {
+    console.log(" ERROR OCCURRED");
+    console.log(" MESSAGE:", err.message);
+    console.log(" STACK TRACE:\n", err.stack);
+    console.log(" PARAMS:", req.params);
+    console.log(" BODY:", req.body);
+
+    let { statusCode = 500, message = "something went wrong!" } = err;
+
+    res.status(statusCode).render("error.ejs", { message });
 });
 
 app.listen(8080, () => {
