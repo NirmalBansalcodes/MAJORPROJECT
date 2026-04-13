@@ -23,6 +23,8 @@ const userRouter = require("./routes/user.js");
 
 const dbUrl = process.env.ATLASDB_URL;
 
+
+console.log("DB URL:", dbUrl);
 // DB CONNECTION
 async function main() {
     await mongoose.connect(dbUrl);
