@@ -1,9 +1,34 @@
 const Listing = require("../models/listing.js");
+const mbxGeocoding = require('@mapbox/mapbox-sdk/services/geocoding');
+const mapToken = process.env.MAP_TOKEN;
+const geocodingClient = mbxGeocoding({ accessToken: mapToken });
 
-module.exports.index = async (req,res) => {
-    const allListings = await Listing.find({});
-        res.render("listings/index.ejs",{allListings});
+module.exports.index = async (req, res) => {
+    let { q } = req.query;
+
+    let allListings;
+
+    if (q && q.trim() !== "") {
+        const search = q.trim();
+
+        allListings = await Listing.find({
+            $or: [
+                // 🔥 Exact location match (strong priority)
+                { location: { $regex: search, $options: "i" } },
+
+                // 🔥 Country match
+                { country: { $regex: search, $options: "i" } },
+
+                // 🔥 Title match (secondary)
+                { title: { $regex: search, $options: "i" } }
+            ]
+        });
+    } else {
+        allListings = await Listing.find({});
     }
+
+    res.render("listings/index.ejs", { allListings, q });
+};
 
 module.exports.renderNewForm = (req, res) => {
     res.render("listings/new.ejs");
@@ -35,12 +60,38 @@ module.exports.showListing = async (req, res) => {
 };
 
 module.exports.createListing = async (req,res,next) => {
-       let url = req.file.path;
-       let filename = req.file.filename;
+    
+       let response = await geocodingClient.forwardGeocode({
+         query: req.body.listing.location,
+         limit: 1 
+        })
+        .send();
+
+        if (!response.body.features.length) {
+        req.flash("error", "Invalid location! Please enter a valid place.");
+        return res.redirect("/listings/new");
+    }
+
+        console.log("MAPBOX RESPONSE:", response.body.features[0]);
+
+
+       let url = "";
+       let filename = "";
+
+       if (req.file) {
+        url = req.file.path;
+        filename = req.file.filename;
+        }
        const newListing = new Listing(req.body.listing);
        newListing.owner = req.user._id;
        newListing.image = {url, filename};
-       await newListing.save();
+       
+       newListing.geometry = {
+    type: "Point",
+    coordinates: response.body.features[0].geometry.coordinates
+};
+       let savedListing = await newListing.save();
+       console.log(savedListing);
        req.flash("success","New listing Created!");
        res.redirect("/listings");
     };
