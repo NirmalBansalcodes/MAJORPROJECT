@@ -23,52 +23,50 @@ const userRouter = require("./routes/user.js");
 
 const dbUrl = process.env.ATLASDB_URL;
 
-
 console.log("DB URL:", dbUrl);
-// DB CONNECTION
-async function main() {
-    await mongoose.connect(dbUrl);
-}
 
-main()
-.then(() => {
-    console.log(" connected to DB");
+// CONNECT DB
+mongoose.connect(dbUrl)
+  .then(() => console.log(" connected to DB"))
+  .catch(err => console.log(" DB ERROR:", err));
 
-    // SESSION STORE (AFTER DB CONNECTS)
-    const store = MongoStore.create({
+
+// ✅ MOVE EVERYTHING BELOW OUTSIDE
+
+// SESSION STORE
+const store = MongoStore.create({
     mongoUrl: dbUrl,
-    collectionName: "sessions", // important
-    ttl: 14 * 24 * 60 * 60, // 14 days
+    collectionName: "sessions",
+    ttl: 14 * 24 * 60 * 60,
     autoRemove: "native",
 });
 
+store.on("error", (err) => {
+    console.log("SESSION STORE ERROR:", err);
+});
 
-    store.on("error", (err) => {
-        console.log(" SESSION STORE ERROR:", err);
-    });
+const sessionOptions = {
+    store,
+    secret: process.env.SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        httpOnly: true,
+    },
+};
 
-    const sessionOptions = {
-        store,
-        secret: process.env.SECRET,
-        resave: false,
-        saveUninitialized: false,
-        cookie: {
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-            httpOnly: true,
-        },
-    };
+// MIDDLEWARES
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(methodOverride("_method"));
+app.engine("ejs", ejsMate);
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
+app.use(express.static(path.join(__dirname, "/public")));
 
-    // MIDDLEWARES
-    app.use(express.json());
-    app.use(express.urlencoded({ extended: true }));
-    app.use(methodOverride("_method"));
-    app.engine("ejs", ejsMate);
-    app.set("view engine", "ejs");
-    app.set("views", path.join(__dirname, "views"));
-    app.use(express.static(path.join(__dirname, "/public")));
-
-    app.use(session(sessionOptions));
-    app.use(flash());
+app.use(session(sessionOptions));
+app.use(flash());
 
     // PASSPORT
     app.use(passport.initialize());
@@ -89,8 +87,11 @@ main()
 
     // ROUTES
     app.use("/listings", listingRouter);
-    app.use("/", userRouter);
+    app.use("/users", userRouter);
 
+    app.get("/", (req, res) => {
+    res.redirect("/listings");
+    });
     // 404
     app.use((req, res, next) => {
         next(new ExpressError(404, "Page not found!"));
@@ -111,12 +112,9 @@ main()
 
     // SERVER START
     app.listen(8080, () => {
-        console.log(" server is listening to port 8080");
-    });
-})
-.catch((err) => {
-    console.log("DB ERROR:", err);
+    console.log("server is listening to port 8080");
 });
+
 
 // GLOBAL ERROR HANDLING
 process.on("uncaughtException", (err) => {
