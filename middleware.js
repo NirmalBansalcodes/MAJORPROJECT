@@ -6,17 +6,25 @@ const Review = require("./models/review.js");
 module.exports.isLoggedIn =(req, res, next)=> {
     if(!req.isAuthenticated()){
         req.flash("error", "you must be logged in to create listing!");
-        return res.redirect("/login");
+        return res.redirect("/users/login");
     }
     next();
 };
 
 module.exports.saveRedirectUrl = (req, res, next) => {
-    if(req.session.redirectUrl) {
-        res.locals.redirectUrl = req.session.redirectUrl;
+    if (req.session.redirectUrl) {
+       
+        if (
+            req.session.redirectUrl.includes("/signup") ||
+            req.session.redirectUrl.includes("/login")
+        ) {
+            res.locals.redirectUrl = "/listings";
+        } else {
+            res.locals.redirectUrl = req.session.redirectUrl;
+        }
     }
     next();
-}
+};
 
 module.exports.isOwner = async (req, res, next) => {
     let {id} = req.params;
